@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daily Ledger</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg:#0F1417;
+  --panel:#171F26;
+  --panel-2:#1D2730;
+  --line:#2A343D;
+  --line-soft:#212A32;
+  --paper:#E7E2D6;
+  --muted:#8B939A;
+  --gold:#C89B3C;
+  --gold-dim:#8A6F32;
+  --teal:#4FA593;
+  --teal-dim:#2E5C52;
+  --clay:#C1533D;
+  --clay-dim:#7A3A2C;
+  --radius:6px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--paper);font-family:'IBM Plex Sans',sans-serif;}
+body{padding:28px;}
+h1,h2,h3{font-family:'Space Grotesk',sans-serif;font-weight:600;margin:0;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+.app{max-width:1280px;margin:0 auto;}
+
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;border-bottom:1px solid var(--line);padding-bottom:16px;flex-wrap:wrap;gap:12px;}
+.topbar .title{font-size:21px;letter-spacing:0.2px;}
+.topbar .sub{color:var(--muted);font-size:12.5px;margin-top:4px;}
+.topbar .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.topbar input[type=text],.topbar input[type=date]{background:var(--panel);border:1px solid var(--line);color:var(--paper);padding:7px 10px;border-radius:var(--radius);font-family:'IBM Plex Mono',monospace;font-size:12.5px;}
+.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--paper);padding:8px 13px;border-radius:var(--radius);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:12.5px;font-weight:500;transition:border-color .15s;white-space:nowrap;}
+.btn:hover{border-color:var(--gold-dim);}
+.btn.gold{background:var(--gold);color:#241a05;border-color:var(--gold);}
+.btn.gold:hover{background:#d6ab4c;}
+.btn.ghost{background:transparent;}
+.btn.danger{color:var(--clay);}
+.btn.danger:hover{border-color:var(--clay);}
+.btn:disabled{opacity:0.35;cursor:default;}
+
+.layout{display:grid;grid-template-columns:400px 1fr;gap:20px;align-items:start;}
+@media (max-width: 860px){
+  body{padding:14px;}
+  .layout{grid-template-columns:1fr;}
+  .topbar{flex-direction:column;align-items:stretch;}
+  .topbar .meta{width:100%;}
+  .tasks{max-height:none;}
+  .timeline-scroll{max-height:60vh;}
+}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;}
+.panel h2{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;}
+
+.addform{display:grid;gap:8px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--line);}
+.addform input,.addform select{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--paper);padding:8px 9px;border-radius:var(--radius);font-size:13px;font-family:'IBM Plex Sans',sans-serif;}
+.addform .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.addform .row3{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;}
+.namewrap{display:flex;gap:6px;}
+.namewrap select{flex:1;}
+.namewrap button{flex-shrink:0;padding:0 10px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:var(--radius);cursor:pointer;}
+.reviewbox{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);background:var(--panel-2);padding:7px 9px;border-radius:var(--radius);border:1px solid var(--line);}
+.reviewbox select{width:auto;flex:1;padding:5px 7px;font-size:12.5px;}
+
+.tasks{display:flex;flex-direction:column;gap:10px;max-height:640px;overflow-y:auto;padding-right:2px;}
+.task-card{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--gold-dim);border-radius:var(--radius);padding:10px 11px;cursor:grab;}
+.task-card.running{border-left-color:var(--teal);}
+.task-card.review{border-left-color:#7F77DD;}
+.task-card:active{cursor:grabbing;}
+.task-card .hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:6px;}
+.task-card .tt{font-size:13px;font-weight:500;line-height:1.35;}
+.task-card .sr{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:11px;margin-right:6px;}
+.task-card .who{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#A9A3EE;margin-top:2px;}
+.task-card .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.pill{font-size:10.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.pill.bank{color:var(--gold);border-color:var(--gold-dim);}
+.pill.status-progress{color:var(--teal);border-color:var(--teal-dim);}
+.pill.status-completed{color:var(--paper);border-color:var(--line);}
+.pill.status-pending{color:var(--clay);border-color:var(--clay-dim);}
+.pill.status-review{color:#A9A3EE;border-color:#4b437f;}
+.pill.status-testing{color:var(--gold);border-color:var(--gold-dim);}
+.task-card .spent{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
+.task-card .spent b{color:var(--paper);font-weight:500;}
+.task-card .spanhint{font-size:10px;color:var(--muted);margin-top:2px;}
+.task-card .ctrls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.icon-btn{background:transparent;border:1px solid var(--line);color:var(--paper);min-width:28px;height:28px;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;padding:0 6px;}
+.icon-btn:hover{border-color:var(--gold-dim);}
+.icon-btn.live{border-color:var(--teal);color:var(--teal);}
+.icon-btn.danger{color:var(--muted);}
+.icon-btn.danger:hover{border-color:var(--clay);color:var(--clay);}
+.icon-btn.confirming{border-color:var(--clay);color:var(--clay);background:rgba(193,83,61,0.12);}
+.backdate-row{display:flex;gap:6px;margin-top:8px;align-items:center;}
+.backdate-row input[type=time]{background:var(--bg);border:1px solid var(--line);color:var(--paper);padding:5px 7px;border-radius:5px;font-size:11.5px;width:88px;}
+.note-row{display:flex;gap:6px;margin-top:8px;}
+.note-row input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--paper);padding:6px 8px;border-radius:5px;font-size:11.5px;}
+.note-row button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:0 9px;cursor:pointer;font-size:12px;}
+.steps{margin-top:8px;font-size:11.5px;}
+.step-line{display:flex;justify-content:space-between;gap:6px;color:var(--muted);padding:2px 0;}
+.step-line .stxt{color:var(--paper);}
+.step-line .sdel{cursor:pointer;color:var(--muted);opacity:0.6;}
+.step-line .sdel:hover{color:var(--clay);opacity:1;}
+.steps-more{color:var(--gold);cursor:pointer;font-size:11px;margin-top:3px;}
+
+.timeline-panel{position:relative;}
+.tl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.tl-hint{font-size:11.5px;color:var(--muted);}
+.zoomctrl{display:flex;gap:4px;align-items:center;}
+.zoomctrl button{background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:4px 9px;font-size:11px;cursor:pointer;font-family:'IBM Plex Mono',monospace;}
+.zoomctrl button.active{color:var(--gold);border-color:var(--gold-dim);}
+.timeline-scroll{max-height:680px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);}
+.timeline{position:relative;padding-left:64px;}
+.hour-row{position:relative;border-top:1px solid var(--line-soft);}
+.hour-row:first-child{border-top:none;}
+.hour-row .hlabel{position:absolute;left:-58px;top:-7px;width:50px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+.subtick{position:absolute;left:0;right:0;border-top:1px dotted var(--line-soft);}
+.now-line{position:absolute;left:0;right:0;height:0;border-top:1.5px solid var(--clay);z-index:5;}
+.now-line::before{content:'now';position:absolute;left:-58px;top:-8px;width:50px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--clay);}
+.session-block{position:absolute;border-radius:5px;font-size:11px;font-family:'IBM Plex Mono',monospace;overflow:hidden;border:1px solid var(--teal-dim);background:rgba(79,165,147,0.14);color:var(--paper);z-index:2;min-height:16px;user-select:none;}
+.session-block.done{border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;}
+.session-block.live{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset;}
+.session-block .inner{padding:4px 8px;pointer-events:none;}
+.session-block .nm{font-weight:500;color:var(--paper);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.session-block .rng{color:var(--muted);}
+.block-handle{position:absolute;left:0;right:0;height:6px;cursor:ns-resize;}
+.block-handle.top{top:0;}
+.block-handle.bottom{bottom:0;}
+.block-handle:hover{background:rgba(200,155,60,0.35);}
+.block-body{position:absolute;top:6px;left:0;right:0;bottom:6px;cursor:grab;}
+.empty-tasks{padding:20px 4px;color:var(--muted);font-size:12.5px;text-align:center;border:1px dashed var(--line);border-radius:var(--radius);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;}
+.modal h3{font-size:15px;margin-bottom:14px;}
+.modal .frow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;}
+.modal label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:4px;}
+.modal input[type=time],.modal input[type=text]{background:var(--panel-2);border:1px solid var(--line);color:var(--paper);padding:7px 9px;border-radius:5px;font-size:13px;width:100%;font-family:'IBM Plex Mono',monospace;}
+.modal .actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+.recycle-item{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.recycle-item .d{color:var(--muted);font-size:11px;}
+.ticket-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:12.5px;}
+.ticket-total{font-size:20px;font-family:'IBM Plex Mono',monospace;color:var(--gold);margin:8px 0;}
+::-webkit-scrollbar{width:8px;}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="topbar">
+    <div>
+      <div class="title">Daily Ledger</div>
+      <div class="sub">Drag a task onto the timeline to start its clock. Drag block edges to resize, drag the middle to move.</div>
+    </div>
+    <div class="meta">
+      <input type="text" id="nameInput" value="Paras" style="width:90px;" title="Logged in as">
+      <input type="date" id="dateInput" title="Date">
+      <button class="btn ghost" id="ticketBtn">Find ticket</button>
+      <button class="btn ghost" id="binBtn">Recycle bin</button>
+      <button class="btn ghost" id="backupBtn" title="Download all stored data as a JSON file">Backup</button>
+      <button class="btn ghost" id="restoreBtn" title="Restore data from a backup JSON file">Restore</button>
+      <input type="file" id="restoreFile" accept="application/json" style="display:none;">
+      <button class="btn ghost" id="copyBtn">Copy for Excel</button>
+      <button class="btn gold" id="exportBtn">Export CSV</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="panel">
+      <h2>Today's tasks</h2>
+      <div class="addform">
+        <input id="f-desc" placeholder="Ticket / task description">
+        <div class="namewrap">
+          <select id="f-name"></select>
+          <button id="addMemberBtn" title="Add team member">+ member</button>
+        </div>
+        <label class="reviewbox">
+          <input type="checkbox" id="f-isreview" style="width:auto;">
+          Reviewing teammate's work &mdash;
+          <select id="f-reviewof"></select>
+        </label>
+        <div class="row2">
+          <select id="f-product"></select>
+          <select id="f-bank"></select>
+        </div>
+        <div class="row2">
+          <input id="f-ticketid" placeholder="Ticket/Task ID">
+          <select id="f-assignedby"></select>
+        </div>
+        <div class="row2">
+          <select id="f-status">
+            <option>Not Started</option>
+            <option>Pending</option>
+            <option selected>In Progress</option>
+            <option>Lead Review</option>
+            <option>Testing</option>
+            <option>Completed</option>
+          </select>
+          <input id="f-assignedhrs" placeholder="Assigned time (hrs)" inputmode="decimal">
+        </div>
+        <div class="row2">
+          <input id="f-assigneddatetime" type="date" title="Assigned date">
+          <input id="f-remarks" placeholder="Remarks (optional)">
+        </div>
+        <button class="btn gold" id="addBtn" style="width:100%;">+ Add task</button>
+      </div>
+      <div id="taskList" class="tasks"></div>
+    </div>
+
+    <div class="panel timeline-panel">
+      <div class="tl-head">
+        <h2 style="margin:0;">Timeline</h2>
+        <div class="zoomctrl mono">
+          zoom
+          <button data-tick="5">5m</button>
+          <button data-tick="15">15m</button>
+          <button data-tick="30" class="active">30m</button>
+          <button data-tick="60">1h</button>
+        </div>
+      </div>
+      <div class="timeline-scroll">
+        <div class="timeline dropzone" id="timeline"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+const START_HOUR = 8, END_HOUR = 21;
+const STORE_PREFIX = 'ledger:';
+const MAX_RECYCLE = 40;
+let state = { tasks: [], deletedTasks: [] };
+let currentDate = todayStr();
+let saveTimer = null;
+let teamMembers = ['Paras','Sneha','Akshata'];
+let productsList = ['Daily Task','EFT_INDIRECT','EFT_DIRECT','BANL','Paymint','CFRM','Team'];
+let banksList = ['LIST','Ajara Urban Bank','Kolhapur Urban','Ajinkya Patsanstha','Team'];
+let assignedByList = ['Paras','Sharayu mam','Sunil sir','Self'];
+let currentTick = 30;
+let pxPerMin = 1.2;
+const ZOOM_PX = { 5:4, 15:2, 30:1.2, 60:0.7 };
+let confirmingDeleteId = null;
+let expandedNotes = {};
+let dragCtx = null;
+let lastAutoName = 'Paras';
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function uid(p){ return (p||'t')+Math.random().toString(36).slice(2,9); }
+function fmtHM(date){
+  return String(date.getHours()).padStart(2,'0')+':'+String(date.getMinutes()).padStart(2,'0');
+}
+function fmtHM12(date){
+  let h = date.getHours(), m = String(date.getMinutes()).padStart(2,'0');
+  const ap = h>=12 ? 'pm':'am';
+  h = h%12; if(h===0) h=12;
+  return h+':'+m+' '+ap;
+}
+function hoursDecimal(ms){ return ms/3600000; }
+function roundNum(n, d){ const f=Math.pow(10,d); return Math.round(n*f)/f; }
+
+function sessionDurationMs(s, nowMs){
+  if(s.durationOnly) return s.ms;
+  const end = s.end ? s.end : nowMs;
+  return Math.max(0, end - s.start);
+}
+function taskTotalMs(task, nowMs){
+  return task.sessions.reduce((sum,s)=>sum+sessionDurationMs(s,nowMs),0);
+}
+function taskIsRunning(task){
+  return task.sessions.some(s=>!s.end);
+}
+
+const LIST_KEYS = {
+  team: 'ledger:team-members',
+  products: 'ledger:products-list',
+  banks: 'ledger:banks-list',
+  assignedBy: 'ledger:assignedby-list'
+};
+function loadTeam(){
+  try{
+    const t = localStorage.getItem(LIST_KEYS.team);
+    const p = localStorage.getItem(LIST_KEYS.products);
+    const b = localStorage.getItem(LIST_KEYS.banks);
+    const a = localStorage.getItem(LIST_KEYS.assignedBy);
+    if(t) teamMembers = JSON.parse(t);
+    if(p) productsList = JSON.parse(p);
+    if(b) banksList = JSON.parse(b);
+    if(a) assignedByList = JSON.parse(a);
+  }catch(e){}
+  renderTeamList();
+}
+function saveTeam(){
+  try{ localStorage.setItem(LIST_KEYS.team, JSON.stringify(teamMembers)); }catch(e){}
+}
+function saveList(kind){
+  const key = LIST_KEYS[kind];
+  const data = kind==='products'?productsList:kind==='banks'?banksList:assignedByList;
+  try{ localStorage.setItem(key, JSON.stringify(data)); }catch(e){}
+}
+function fillSelect(id, list, withOther, selectValue){
+  const el = document.getElementById(id);
+  const prev = selectValue!==undefined ? selectValue : el.value;
+  el.innerHTML = list.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('') + (withOther?'<option value="__other__">+ Other&hellip;</option>':'');
+  if(prev && list.includes(prev)) el.value = prev;
+}
+function renderTeamList(){
+  fillSelect('f-name', teamMembers, false, 'Paras');
+  fillSelect('f-reviewof', teamMembers, false);
+  fillSelect('f-product', productsList, true);
+  fillSelect('f-bank', banksList, true);
+  fillSelect('f-assignedby', assignedByList, true, 'Self');
+}
+function handleOtherSelect(selectId, kind){
+  const el = document.getElementById(selectId);
+  el.addEventListener('change', ()=>{
+    if(el.value!=='__other__') return;
+    const val = prompt('Add new '+kind+':');
+    if(!val || !val.trim()){ el.selectedIndex=0; return; }
+    const clean = val.trim();
+    const listRef = kind==='product'?productsList:kind==='bank'?banksList:assignedByList;
+    const listKind = kind==='product'?'products':kind==='bank'?'banks':'assignedBy';
+    if(!listRef.includes(clean)) listRef.push(clean);
+    saveList(listKind);
+    fillSelect(selectId, listRef, true, clean);
+  });
+}
+
+function loadDay(dateStr){
+  try{
+    const raw = localStorage.getItem(STORE_PREFIX+dateStr);
+    if(raw){
+      state = JSON.parse(raw);
+      if(!state.deletedTasks) state.deletedTasks = [];
+    } else {
+      state = { tasks: [], deletedTasks: [] };
+    }
+  }catch(e){
+    state = { tasks: [], deletedTasks: [] };
+  }
+  renderAll();
+}
+function queueSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDay, 300);
+}
+function saveDay(){
+  try{
+    localStorage.setItem(STORE_PREFIX+currentDate, JSON.stringify(state));
+  }catch(e){
+    console.error('save failed', e);
+  }
+}
+
+function addTask(){
+  const desc = document.getElementById('f-desc').value.trim();
+  if(!desc){ document.getElementById('f-desc').focus(); return; }
+  const isReview = document.getElementById('f-isreview').checked;
+  const reviewOf = document.getElementById('f-reviewof').value;
+  const task = {
+    id: uid('task'),
+    name: isReview ? ('Paras/'+reviewOf) : (document.getElementById('f-name').value.trim() || 'Paras'),
+    isReview: isReview,
+    reviewOf: isReview ? reviewOf : '',
+    product: document.getElementById('f-product').value.trim() || 'Task',
+    ticketId: document.getElementById('f-ticketid').value.trim(),
+    description: desc,
+    assignedBy: document.getElementById('f-assignedby').value.trim() || 'Self',
+    status: document.getElementById('f-status').value,
+    assignedHrs: document.getElementById('f-assignedhrs').value.trim(),
+    assignedDateTime: document.getElementById('f-assigneddatetime').value || '',
+    bank: document.getElementById('f-bank').value.trim(),
+    remarks: document.getElementById('f-remarks').value.trim(),
+    notes: [],
+    sessions: []
+  };
+  state.tasks.push(task);
+  ['f-desc','f-ticketid','f-assignedhrs','f-remarks'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-assigneddatetime').value = currentDate;
+  document.getElementById('f-status').value='In Progress';
+  document.getElementById('f-isreview').checked=false;
+  document.getElementById('f-name').value='Paras';
+  queueSave();
+  renderAll();
+}
+
+function sortNotes(task){
+  task.notes.sort((a,b)=>a.t-b.t);
+}
+
+function startSession(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  if(taskIsRunning(task)) return;
+  task.sessions.push({ id: uid('s'), start: Date.now(), end: null });
+  task.notes.push({ id: uid('n'), t: Date.now(), text: 'Started' });
+  sortNotes(task);
+  queueSave();
+  renderAll();
+}
+function pauseSession(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const s = task.sessions.find(s=>!s.end);
+  if(s){
+    s.end = Date.now();
+    task.notes.push({ id: uid('n'), t: Date.now(), text: 'Paused ('+roundNum(hoursDecimal(sessionDurationMs(s,Date.now()))*60,0)+'m)' });
+    sortNotes(task);
+  }
+  queueSave();
+  renderAll();
+}
+function addQuickDuration(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const input = document.getElementById('qd-hrs-'+taskId);
+  const hrs = parseFloat(input.value);
+  if(!hrs || hrs<=0){ input.focus(); return; }
+  const ms = Math.round(hrs*3600000);
+  const sessionId = uid('s');
+  task.sessions.push({ id: sessionId, durationOnly: true, ms: ms, loggedAt: Date.now() });
+  task.notes.push({ id: uid('n'), t: Date.now(), text: roundNum(hrs,2)+'h logged (exact time not tracked)', sessionId: sessionId });
+  sortNotes(task);
+  input.value = '';
+  document.getElementById('quickdur-'+taskId).style.display='none';
+  queueSave();
+  renderAll();
+}
+function toggleQuickDuration(taskId){
+  const row = document.getElementById('quickdur-'+taskId);
+  row.style.display = row.style.display==='none' ? 'flex' : 'none';
+}
+function timeStrToMs(hhmm, dateStr){
+  const [h,m] = hhmm.split(':').map(Number);
+  const [y,mo,d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, mo-1, d, h, m, 0, 0);
+  return dt.getTime();
+}
+function markCompleted(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const now = Date.now();
+  const running = task.sessions.find(s=>!s.end);
+  if(running){
+    running.end = now;
+    task.notes.push({ id: uid('n'), t: now, text: 'Completed' });
+  } else {
+    task.notes.push({ id: uid('n'), t: now, text: 'Marked complete' });
+  }
+  sortNotes(task);
+  task.status = 'Completed';
+  queueSave();
+  renderAll();
+}
+function toggleStartAt(taskId){
+  const row = document.getElementById('startat-'+taskId);
+  row.style.display = row.style.display==='none' ? 'flex' : 'none';
+}
+function startSessionAt(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task || taskIsRunning(task)) return;
+  const timeVal = document.getElementById('sa-time-'+taskId).value;
+  if(!timeVal) return;
+  const start = timeStrToMs(timeVal, currentDate);
+  if(currentDate===todayStr() && start > Date.now()){ alert('That time is in the future.'); return; }
+  task.sessions.push({ id: uid('s'), start, end: null });
+  task.notes.push({ id: uid('n'), t: start, text: 'Started' });
+  sortNotes(task);
+  document.getElementById('startat-'+taskId).style.display='none';
+  queueSave();
+  renderAll();
+}
+
+function requestDelete(taskId){
+  if(confirmingDeleteId===taskId){
+    doDelete(taskId);
+    confirmingDeleteId=null;
+  } else {
+    confirmingDeleteId = taskId;
+    renderTaskList();
+    setTimeout(()=>{ if(confirmingDeleteId===taskId){ confirmingDeleteId=null; renderTaskList(); } }, 4000);
+  }
+}
+function doDelete(taskId){
+  const idx = state.tasks.findIndex(t=>t.id===taskId);
+  if(idx===-1) return;
+  const [removed] = state.tasks.splice(idx,1);
+  removed.deletedAt = Date.now();
+  state.deletedTasks.unshift(removed);
+  if(state.deletedTasks.length>MAX_RECYCLE) state.deletedTasks.length = MAX_RECYCLE;
+  queueSave();
+  renderAll();
+}
+function restoreTask(taskId){
+  const idx = state.deletedTasks.findIndex(t=>t.id===taskId);
+  if(idx===-1) return;
+  const [restored] = state.deletedTasks.splice(idx,1);
+  delete restored.deletedAt;
+  state.tasks.push(restored);
+  queueSave();
+  renderAll();
+  openBinModal();
+}
+
+function addNote(taskId, text){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task || !text.trim()) return;
+  task.notes.push({ id: uid('n'), t: Date.now(), text: text.trim() });
+  sortNotes(task);
+  queueSave();
+  renderAll();
+}
+function deleteNote(taskId, noteId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const note = task.notes.find(n=>n.id===noteId);
+  if(note && note.sessionId){
+    task.sessions = task.sessions.filter(s=>s.id!==note.sessionId);
+  }
+  task.notes = task.notes.filter(n=>n.id!==noteId);
+  queueSave();
+  renderAll();
+}
+function toggleNotes(taskId){
+  expandedNotes[taskId] = !expandedNotes[taskId];
+  renderTaskList();
+}
+
+function statusClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('lead review')) return 'review';
+  if(s.includes('testing')) return 'testing';
+  if(s.includes('progress')) return 'progress';
+  if(s.includes('complete')) return 'completed';
+  if(s.includes('pend') || s.includes('block') || s.includes('not start')) return 'pending';
+  return '';
+}
+
+function renderTaskList(){
+  const el = document.getElementById('taskList');
+  el.innerHTML = '';
+  if(state.tasks.length===0){
+    el.innerHTML = '<div class="empty-tasks">No tasks yet. Add one above, then drag it onto the timeline to start the clock.</div>';
+    return;
+  }
+  const now = Date.now();
+  state.tasks.forEach((task, idx)=>{
+    const running = taskIsRunning(task);
+    const totalMs = taskTotalMs(task, now);
+    const card = document.createElement('div');
+    card.className = 'task-card' + (running?' running':'') + (task.isReview?' review':'');
+    card.draggable = true;
+    card.dataset.taskId = task.id;
+    card.addEventListener('dragstart', e=>{
+      e.dataTransfer.setData('text/plain', task.id);
+    });
+
+    const notes = task.notes;
+    const expanded = !!expandedNotes[task.id];
+    const visibleNotes = expanded ? notes : notes.slice(0,3);
+    const stepsHtml = visibleNotes.map(n=>`
+      <div class="step-line"><span class="stxt" style="cursor:pointer;" onclick="editNoteModal('${task.id}','${n.id}')" title="Click to edit">${fmtHM12(new Date(n.t))} &mdash; ${escapeHtml(n.text)}</span><span class="sdel" onclick="deleteNote('${task.id}','${n.id}')" title="Remove">&times;</span></div>
+    `).join('');
+    const moreCount = notes.length-3;
+    const moreToggle = notes.length>3 ? `<div class="steps-more" onclick="toggleNotes('${task.id}')">${expanded ? 'show less' : '+ '+moreCount+' more'}</div>` : '';
+
+    const confirming = confirmingDeleteId===task.id;
+
+    card.innerHTML = `
+      <div class="hdr">
+        <div class="tt"><span class="sr">${String(idx+1).padStart(2,'0')}</span>${escapeHtml(task.description)}</div>
+      </div>
+      ${task.isReview ? `<div class="who">review &middot; ${escapeHtml(task.name)}</div>` : `<div class="who">${escapeHtml(task.name)}</div>`}
+      <div class="meta">
+        <span class="pill">${escapeHtml(task.product)}</span>
+        ${task.ticketId?`<span class="pill">${escapeHtml(task.ticketId)}</span>`:''}
+        <span class="pill status-${statusClass(task.status)}">${escapeHtml(task.status)}</span>
+        ${task.bank?`<span class="pill bank">${escapeHtml(task.bank)}</span>`:''}
+      </div>
+      <div class="spent">
+        <span>${running?'<span style="color:var(--teal)">&#9679; live</span>':'time spent'}</span>
+        <b class="mono live-total" data-task="${task.id}">${totalMs>0 || running ? roundNum(hoursDecimal(totalMs),2)+' hrs' : '&mdash;'}</b>
+      </div>
+      ${task.sessions.length>1?`<div class="spanhint">${task.sessions.length} sessions &mdash; time spent is summed, not one continuous block</div>`:''}
+      <div class="ctrls">
+        ${running
+          ? `<button class="icon-btn live" title="Pause" onclick="pauseSession('${task.id}')">&#10073;&#10073;</button>`
+          : `<button class="icon-btn" title="Start now" onclick="startSession('${task.id}')">&#9654;</button>
+             <button class="icon-btn" title="Start at a specific time" onclick="toggleStartAt('${task.id}')">&#9654; at&hellip;</button>`}
+        <button class="icon-btn" title="Log hours without exact times" onclick="toggleQuickDuration('${task.id}')">&#8987; hrs</button>
+        <button class="icon-btn" title="Mark completed" onclick="markCompleted('${task.id}')">&#10003; done</button>
+        <button class="icon-btn" title="Edit task details" onclick="editTaskModal('${task.id}')">&#9998;</button>
+        <button class="icon-btn danger${confirming?' confirming':''}" title="${confirming?'Click again to confirm':'Delete task'}" onclick="requestDelete('${task.id}')">${confirming?'confirm?':'&times;'}</button>
+      </div>
+      <div class="backdate-row" id="startat-${task.id}" style="display:none;">
+        <span style="color:var(--muted);font-size:11px;">started at</span>
+        <input type="time" id="sa-time-${task.id}">
+        <button class="icon-btn" onclick="startSessionAt('${task.id}')">start</button>
+      </div>
+      <div class="backdate-row" id="quickdur-${task.id}" style="display:none;">
+        <span style="color:var(--muted);font-size:11px;">time spent</span>
+        <input type="number" step="0.25" min="0" placeholder="hrs" id="qd-hrs-${task.id}" style="width:64px;background:var(--bg);border:1px solid var(--line);color:var(--paper);padding:5px 7px;border-radius:5px;font-size:11.5px;">
+        <button class="icon-btn" onclick="addQuickDuration('${task.id}')">log</button>
+      </div>
+      <div class="steps">${stepsHtml}${moreToggle}</div>
+      <div class="note-row">
+        <input placeholder="Add a step / timestamped note" onkeydown="if(event.key==='Enter'){addNote('${task.id}', this.value); this.value='';}">
+        <button onclick="const i=this.previousElementSibling; addNote('${task.id}', i.value); i.value='';">+</button>
+      </div>
+    `;
+    el.appendChild(card);
+  });
+}
+
+function buildHourRows(){
+  const timeline = document.getElementById('timeline');
+  timeline.innerHTML = '';
+  const hourHeight = pxPerMin*60;
+  for(let h=START_HOUR; h<END_HOUR; h++){
+    const row = document.createElement('div');
+    row.className = 'hour-row';
+    row.style.height = hourHeight+'px';
+    const label = document.createElement('div');
+    label.className = 'hlabel mono';
+    const d = new Date(); d.setHours(h,0,0,0);
+    label.textContent = fmtHM12(d);
+    row.appendChild(label);
+    for(let t=currentTick; t<60; t+=currentTick){
+      const sub = document.createElement('div');
+      sub.className = 'subtick';
+      sub.style.top = (t*pxPerMin)+'px';
+      row.appendChild(sub);
+    }
+    timeline.appendChild(row);
+  }
+  const totalHeight = (END_HOUR-START_HOUR)*hourHeight;
+  timeline.style.height = totalHeight+'px';
+}
+
+function timeToTop(date){
+  const mins = (date.getHours()-START_HOUR)*60 + date.getMinutes() + date.getSeconds()/60;
+  return Math.max(0, Math.min((END_HOUR-START_HOUR)*60, mins)) * pxPerMin;
+}
+function dayBoundsMs(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  return {
+    start: new Date(y,m-1,d,START_HOUR,0,0,0).getTime(),
+    end: new Date(y,m-1,d,END_HOUR,0,0,0).getTime()
+  };
+}
+
+function renderTimeline(){
+  const timeline = document.getElementById('timeline');
+  timeline.querySelectorAll('.session-block, .now-line').forEach(n=>n.remove());
+  const now = new Date();
+  const nowMs = now.getTime();
+
+  const isToday = currentDate === todayStr();
+  if(isToday){
+    const nowLine = document.createElement('div');
+    nowLine.className = 'now-line';
+    nowLine.style.top = timeToTop(now)+'px';
+    timeline.appendChild(nowLine);
+  }
+
+  let allSessions = [];
+  state.tasks.forEach(task=>{
+    task.sessions.forEach(s=>{ if(!s.durationOnly) allSessions.push({task, session:s}); });
+  });
+
+  allSessions.sort((a,b)=>a.session.start-b.session.start);
+  const lanes = [];
+  allSessions.forEach(item=>{
+    const s = item.session;
+    const end = s.end || nowMs;
+    let laneIdx = lanes.findIndex(laneEnd=>laneEnd <= s.start);
+    if(laneIdx===-1){ laneIdx = lanes.length; }
+    lanes[laneIdx] = end;
+    item.lane = laneIdx;
+  });
+  const maxLanes = Math.max(1, lanes.length);
+
+  allSessions.forEach(item=>{
+    const { task, session, lane } = item;
+    const startDate = new Date(session.start);
+    const endDate = session.end ? new Date(session.end) : now;
+    const top = timeToTop(startDate);
+    const bottom = timeToTop(endDate);
+    const height = Math.max(16, bottom-top);
+    const running = !session.end;
+    const block = document.createElement('div');
+    block.className = 'session-block' + (running?' live':' done');
+    const laneWidthPct = 100/maxLanes;
+    block.style.top = top+'px';
+    block.style.height = height+'px';
+    block.style.left = `calc(${lane*laneWidthPct}% + 4px)`;
+    block.style.width = `calc(${laneWidthPct}% - 8px)`;
+    block.title = task.description;
+
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+    inner.innerHTML = `<div class="nm">${escapeHtml(task.description)}</div><div class="rng">${fmtHM(startDate)}&ndash;${running?'now':fmtHM(endDate)}</div>`;
+    block.appendChild(inner);
+
+    const topHandle = document.createElement('div');
+    topHandle.className = 'block-handle top';
+    block.appendChild(topHandle);
+    topHandle.addEventListener('mousedown', e=>beginDrag(e,'resize-start',task,session));
+
+    if(!running){
+      const body = document.createElement('div');
+      body.className = 'block-body';
+      block.appendChild(body);
+      body.addEventListener('mousedown', e=>beginDrag(e,'move',task,session));
+
+      const bottomHandle = document.createElement('div');
+      bottomHandle.className = 'block-handle bottom';
+      block.appendChild(bottomHandle);
+      bottomHandle.addEventListener('mousedown', e=>beginDrag(e,'resize-end',task,session));
+    } else {
+      block.addEventListener('click', ()=>pauseSession(task.id));
+    }
+
+    timeline.appendChild(block);
+  });
+}
+
+function beginDrag(e, mode, task, session){
+  e.preventDefault();
+  e.stopPropagation();
+  dragCtx = {
+    mode, task, session,
+    startY: e.clientY,
+    origStart: session.start,
+    origEnd: session.end,
+    moved: false
+  };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
+}
+function onDragMove(e){
+  if(!dragCtx) return;
+  const deltaY = e.clientY - dragCtx.startY;
+  if(Math.abs(deltaY) > 3) dragCtx.moved = true;
+  const deltaMin = deltaY / pxPerMin;
+  const snapped = Math.round(deltaMin/currentTick)*currentTick;
+  const bounds = dayBoundsMs(currentDate);
+  const { session, mode, origStart, origEnd } = dragCtx;
+  const tickMs = currentTick*60000;
+
+  if(mode==='move'){
+    let ns = origStart + snapped*60000;
+    let ne = origEnd!=null ? origEnd + snapped*60000 : null;
+    const dur = (origEnd!=null) ? (origEnd-origStart) : null;
+    if(ns < bounds.start){ ns = bounds.start; if(dur!=null) ne = ns+dur; }
+    if(ne!=null && ne > bounds.end){ ne = bounds.end; ns = ne-dur; }
+    session.start = ns; session.end = ne;
+  } else if(mode==='resize-start'){
+    let ns = origStart + snapped*60000;
+    const cap = (session.end!=null?session.end:Date.now()) - tickMs;
+    ns = Math.max(bounds.start, Math.min(ns, cap));
+    session.start = ns;
+  } else if(mode==='resize-end' && origEnd!=null){
+    let ne = origEnd + snapped*60000;
+    ne = Math.min(bounds.end, Math.max(ne, session.start+tickMs));
+    session.end = ne;
+  }
+  renderTimeline();
+}
+function onDragEnd(e){
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragEnd);
+  if(!dragCtx) return;
+  const { mode, task, session, moved } = dragCtx;
+  if(!moved && mode==='move'){
+    openSessionEditor(task, session);
+  } else {
+    queueSave();
+    renderTaskList();
+  }
+  dragCtx = null;
+}
+
+function openSessionEditor(task, session){
+  const startDate = new Date(session.start);
+  const endDate = session.end ? new Date(session.end) : new Date();
+  const modalRoot = document.getElementById('modalRoot');
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="mo">
+      <div class="modal">
+        <h3>Edit session &mdash; ${escapeHtml(task.description)}</h3>
+        <div class="frow">
+          <div style="flex:1;"><label>From</label><input type="time" id="edit-from" value="${fmtHM(startDate)}"></div>
+          <div style="flex:1;"><label>To</label><input type="time" id="edit-to" value="${fmtHM(endDate)}" ${!session.end?'disabled':''}></div>
+        </div>
+        <div class="actions">
+          <button class="btn danger" id="edit-delete">Delete session</button>
+          <button class="btn ghost" id="edit-cancel">Cancel</button>
+          <button class="btn gold" id="edit-save">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('edit-cancel').onclick = closeModal;
+  document.getElementById('mo').onclick = (e)=>{ if(e.target.id==='mo') closeModal(); };
+  document.getElementById('edit-delete').onclick = ()=>{
+    task.sessions = task.sessions.filter(s=>s.id!==session.id);
+    queueSave(); closeModal(); renderAll();
+  };
+  document.getElementById('edit-save').onclick = ()=>{
+    const fromVal = document.getElementById('edit-from').value;
+    const toVal = document.getElementById('edit-to').value;
+    const newStart = timeStrToMs(fromVal, currentDate);
+    session.start = newStart;
+    if(session.end){
+      const newEnd = timeStrToMs(toVal, currentDate);
+      if(newEnd<=newStart){ alert('End time must be after start time.'); return; }
+      session.end = newEnd;
+    }
+    queueSave(); closeModal(); renderAll();
+  };
+}
+function editTaskModal(taskId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const modalRoot = document.getElementById('modalRoot');
+  const productOpts = productsList.map(v=>`<option value="${escapeHtml(v)}" ${task.product===v?'selected':''}>${escapeHtml(v)}</option>`).join('');
+  const bankOpts = banksList.map(v=>`<option value="${escapeHtml(v)}" ${task.bank===v?'selected':''}>${escapeHtml(v)}</option>`).join('');
+  const abOpts = assignedByList.map(v=>`<option value="${escapeHtml(v)}" ${task.assignedBy===v?'selected':''}>${escapeHtml(v)}</option>`).join('');
+  const statusOpts = ['Not Started','Pending','In Progress','Lead Review','Testing','Completed'].map(v=>`<option ${task.status===v?'selected':''}>${v}</option>`).join('');
+  const memberOpts = teamMembers.map(v=>`<option value="${escapeHtml(v)}" ${task.reviewOf===v?'selected':''}>${escapeHtml(v)}</option>`).join('');
+
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="mo">
+      <div class="modal">
+        <h3>Edit task</h3>
+        <label>Description</label>
+        <input type="text" id="et-desc" value="${escapeHtml(task.description)}" style="margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <input type="checkbox" id="et-isreview" ${task.isReview?'checked':''} style="width:auto;"> Reviewing teammate's work &mdash;
+          <select id="et-reviewof" style="width:auto;flex:1;">${memberOpts}</select>
+        </label>
+        <div class="frow">
+          <div style="flex:1;"><label>Product</label><select id="et-product">${productOpts}</select></div>
+          <div style="flex:1;"><label>Bank</label><select id="et-bank">${bankOpts}</select></div>
+        </div>
+        <div class="frow">
+          <div style="flex:1;"><label>Ticket/Task ID</label><input type="text" id="et-ticketid" value="${escapeHtml(task.ticketId||'')}"></div>
+          <div style="flex:1;"><label>Assigned By</label><select id="et-assignedby">${abOpts}</select></div>
+        </div>
+        <div class="frow">
+          <div style="flex:1;"><label>Status</label><select id="et-status">${statusOpts}</select></div>
+          <div style="flex:1;"><label>Assigned Time (hrs)</label><input type="text" id="et-assignedhrs" value="${escapeHtml(task.assignedHrs||'')}"></div>
+        </div>
+        <div class="frow">
+          <div style="flex:1;"><label>Assigned Date</label><input type="date" id="et-assigneddatetime" value="${task.assignedDateTime||''}"></div>
+          <div style="flex:1;"><label>Remarks</label><input type="text" id="et-remarks" value="${escapeHtml(task.remarks||'')}"></div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost" id="et-cancel">Cancel</button>
+          <button class="btn gold" id="et-save">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('mo').onclick = (e)=>{ if(e.target.id==='mo') closeModal(); };
+  document.getElementById('et-cancel').onclick = closeModal;
+  document.getElementById('et-save').onclick = ()=>{
+    const desc = document.getElementById('et-desc').value.trim();
+    if(!desc) return;
+    const isReview = document.getElementById('et-isreview').checked;
+    const reviewOf = document.getElementById('et-reviewof').value;
+    task.description = desc;
+    task.isReview = isReview;
+    task.reviewOf = isReview ? reviewOf : '';
+    if(isReview) task.name = 'Paras/'+reviewOf;
+    task.product = document.getElementById('et-product').value;
+    task.bank = document.getElementById('et-bank').value;
+    task.ticketId = document.getElementById('et-ticketid').value.trim();
+    task.assignedBy = document.getElementById('et-assignedby').value;
+    task.status = document.getElementById('et-status').value;
+    task.assignedHrs = document.getElementById('et-assignedhrs').value.trim();
+    task.assignedDateTime = document.getElementById('et-assigneddatetime').value || '';
+    task.remarks = document.getElementById('et-remarks').value.trim();
+    queueSave(); closeModal(); renderAll();
+  };
+}
+
+function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
+
+function editNoteModal(taskId, noteId){
+  const task = state.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  const note = task.notes.find(n=>n.id===noteId);
+  if(!note) return;
+  const d = new Date(note.t);
+  const modalRoot = document.getElementById('modalRoot');
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="mo">
+      <div class="modal">
+        <h3>Edit step</h3>
+        <label>Time</label>
+        <input type="time" id="note-edit-time" value="${fmtHM(d)}" style="margin-bottom:10px;">
+        <label>Note</label>
+        <input type="text" id="note-edit-text" value="${escapeHtml(note.text)}">
+        <div class="actions">
+          <button class="btn danger" id="note-delete">Delete</button>
+          <button class="btn ghost" id="note-cancel">Cancel</button>
+          <button class="btn gold" id="note-save">Save</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('mo').onclick = (e)=>{ if(e.target.id==='mo') closeModal(); };
+  document.getElementById('note-cancel').onclick = closeModal;
+  document.getElementById('note-delete').onclick = ()=>{ deleteNote(taskId, noteId); closeModal(); };
+  document.getElementById('note-save').onclick = ()=>{
+    const timeVal = document.getElementById('note-edit-time').value;
+    const textVal = document.getElementById('note-edit-text').value.trim();
+    if(!textVal) return;
+    note.t = timeStrToMs(timeVal, currentDate);
+    note.text = textVal;
+    queueSave(); closeModal(); renderAll();
+  };
+}
+
+function renderAll(){
+  renderTaskList();
+  buildHourRows();
+  renderTimeline();
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const timeline = document.getElementById('timeline');
+timeline.addEventListener('dragover', e=>{ e.preventDefault(); });
+timeline.addEventListener('drop', e=>{
+  e.preventDefault();
+  const taskId = e.dataTransfer.getData('text/plain');
+  if(taskId) startSession(taskId);
+});
+
+document.getElementById('addBtn').addEventListener('click', addTask);
+document.getElementById('addMemberBtn').addEventListener('click', ()=>{
+  const name = prompt('Add team member name:');
+  if(name && name.trim() && !teamMembers.includes(name.trim())){
+    teamMembers.push(name.trim());
+    saveTeam();
+    renderTeamList();
+  }
+});
+handleOtherSelect('f-product','product');
+handleOtherSelect('f-bank','bank');
+handleOtherSelect('f-assignedby','assigned by');
+document.getElementById('f-isreview').addEventListener('change', syncReviewName);
+document.getElementById('f-reviewof').addEventListener('change', syncReviewName);
+function syncReviewName(){
+  const isReview = document.getElementById('f-isreview').checked;
+  document.getElementById('f-name').disabled = isReview;
+}
+document.getElementById('exportBtn').addEventListener('click', ()=>doExport('download'));
+document.getElementById('copyBtn').addEventListener('click', ()=>doExport('copy'));
+document.getElementById('dateInput').addEventListener('change', async (e)=>{
+  currentDate = e.target.value;
+  document.getElementById('f-assigneddatetime').value = currentDate;
+  await loadDay(currentDate);
+});
+document.querySelectorAll('.zoomctrl button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.zoomctrl button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTick = parseInt(btn.dataset.tick,10);
+    pxPerMin = ZOOM_PX[currentTick];
+    buildHourRows();
+    renderTimeline();
+  });
+});
+
+function buildRows(name, extraCols){
+  const headers = ['Sr. No.','Working Date','Name','Product','Ticket/Task ID','Status','Ticket/Task Description','Solution Description','Time Spent (Hrs)','Assigned DateTime','Assigned By','Assigned Timeline(Hrs)','Remarks','Bank'];
+  const rows = [headers];
+  const dateDisp = formatDateDisplay(currentDate);
+  const now = Date.now();
+
+  state.tasks.forEach((task, idx)=>{
+    const sessions = task.sessions;
+    const totalMs = taskTotalMs(task, now);
+
+    let solutionLines = [task.description];
+    task.notes.forEach(n=>{
+      solutionLines.push('- '+fmtHM12(new Date(n.t))+' '+n.text);
+    });
+    const solutionDesc = solutionLines.join('\n');
+
+    rows.push([
+      idx+1,
+      dateDisp,
+      task.name,
+      task.product,
+      task.ticketId || 'NA',
+      task.status,
+      task.description,
+      solutionDesc,
+      sessions.length ? roundNum(hoursDecimal(totalMs),4) : '',
+      task.assignedDateTime ? formatDateDisplay(task.assignedDateTime) : '',
+      task.assignedBy,
+      task.assignedHrs || '',
+      task.remarks || '',
+      task.bank || ''
+    ]);
+  });
+  return rows;
+}
+
+function doExport(mode){
+  const rows = buildRows();
+  if(mode==='download'){
+    const csv = rows.map(row=>row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'daily-log-'+currentDate+'.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } else {
+    const tsv = rows.map(row=>row.map(v=>String(v==null?'':v).replace(/\t/g,' ').replace(/\n/g,' / ')).join('\t')).join('\n');
+    copyToClipboard(tsv);
+  }
+}
+function copyToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      flashCopyBtn(true);
+    }).catch(()=>fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position='fixed';
+    ta.style.left='-9999px';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    flashCopyBtn(ok);
+  }catch(e){
+    flashCopyBtn(false);
+  }
+}
+function flashCopyBtn(ok){
+  const btn = document.getElementById('copyBtn');
+  const original = btn.textContent;
+  btn.textContent = ok ? 'Copied' : 'Copy failed';
+  setTimeout(()=>{ btn.textContent = original; }, 1500);
+}
+function csvEscape(v){
+  const s = String(v==null?'':v);
+  if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+function formatDateDisplay(dateStr){
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d).padStart(2,'0')+'-'+months[m-1]+'-'+y;
+}
+
+document.getElementById('backupBtn').addEventListener('click', exportBackup);
+function exportBackup(){
+  const data = {};
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith(STORE_PREFIX)) data[k] = localStorage.getItem(k);
+  });
+  const payload = { exportedAt: new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'daily-ledger-backup-'+todayStr()+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('restoreBtn').addEventListener('click', ()=>{
+  document.getElementById('restoreFile').click();
+});
+document.getElementById('restoreFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let payload;
+    try{ payload = JSON.parse(reader.result); }
+    catch(err){ alert('That file is not valid backup JSON.'); e.target.value=''; return; }
+    const data = payload && payload.data ? payload.data : payload;
+    if(!data || typeof data !== 'object'){ alert('That file is not valid backup JSON.'); e.target.value=''; return; }
+    const keys = Object.keys(data).filter(k=>k.startsWith(STORE_PREFIX));
+    if(keys.length===0){ alert('No ledger data found in that file.'); e.target.value=''; return; }
+    const dayCount = keys.filter(k=>/^ledger:\d{4}-\d{2}-\d{2}$/.test(k)).length;
+    const ok = confirm('This will restore '+dayCount+' day(s) of data (plus your team/product/bank lists) into this browser, overwriting any days with the same date. Continue?');
+    if(!ok){ e.target.value=''; return; }
+    keys.forEach(k=>localStorage.setItem(k, data[k]));
+    e.target.value='';
+    loadTeam();
+    loadDay(currentDate);
+    alert('Restore complete.');
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('binBtn').addEventListener('click', openBinModal);
+function openBinModal(){
+  const modalRoot = document.getElementById('modalRoot');
+  const items = state.deletedTasks.map(t=>`
+    <div class="recycle-item">
+      <div>
+        <div>${escapeHtml(t.description)}</div>
+        <div class="d">${escapeHtml(t.name)} &middot; deleted ${fmtHM12(new Date(t.deletedAt))}</div>
+      </div>
+      <button class="btn ghost" onclick="restoreTask('${t.id}')">Restore</button>
+    </div>
+  `).join('') || '<div style="color:var(--muted);font-size:12.5px;">Recycle bin is empty.</div>';
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="mo">
+      <div class="modal">
+        <h3>Recycle bin</h3>
+        ${items}
+        <div class="actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('mo').onclick = (e)=>{ if(e.target.id==='mo') closeModal(); };
+}
+
+document.getElementById('ticketBtn').addEventListener('click', openTicketModal);
+function openTicketModal(){
+  const modalRoot = document.getElementById('modalRoot');
+  modalRoot.innerHTML = `
+    <div class="modal-overlay" id="mo">
+      <div class="modal">
+        <h3>Find ticket across all days</h3>
+        <input type="text" id="ticket-search" placeholder="Ticket/Task ID, e.g. 329806" style="margin-bottom:10px;">
+        <button class="btn gold" id="ticket-go" style="width:100%;">Search</button>
+        <div id="ticket-results" style="margin-top:14px;"></div>
+        <div class="actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('mo').onclick = (e)=>{ if(e.target.id==='mo') closeModal(); };
+  document.getElementById('ticket-go').onclick = runTicketSearch;
+  document.getElementById('ticket-search').addEventListener('keydown', e=>{ if(e.key==='Enter') runTicketSearch(); });
+}
+function runTicketSearch(){
+  const q = document.getElementById('ticket-search').value.trim().toLowerCase();
+  const resultsEl = document.getElementById('ticket-results');
+  if(!q){ resultsEl.innerHTML=''; return; }
+  try{
+    const dateKeys = Object.keys(localStorage).filter(k=>/^ledger:\d{4}-\d{2}-\d{2}$/.test(k));
+    let totalMs = 0;
+    let dayRows = [];
+    for(const key of dateKeys){
+      let dayState;
+      try{
+        const raw = localStorage.getItem(key);
+        dayState = raw ? JSON.parse(raw) : null;
+      }catch(e){ continue; }
+      if(!dayState || !dayState.tasks) continue;
+      const dstr = key.replace(STORE_PREFIX,'');
+      dayState.tasks.forEach(task=>{
+        if((task.ticketId||'').trim().toLowerCase() === q){
+          const ms = taskTotalMs(task, Date.now());
+          totalMs += ms;
+          dayRows.push({date: dstr, status: task.status, hrs: roundNum(hoursDecimal(ms),2), name: task.name});
+        }
+      });
+    }
+    if(dayRows.length===0){
+      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:12.5px;">No entries found for that ticket.</div>';
+      return;
+    }
+    dayRows.sort((a,b)=>a.date.localeCompare(b.date));
+    resultsEl.innerHTML = `
+      <div class="ticket-total">${roundNum(hoursDecimal(totalMs),2)} hrs total</div>
+      ${dayRows.map(r=>`<div class="ticket-row"><span>${formatDateDisplay(r.date)} &middot; ${escapeHtml(r.name)} &middot; ${escapeHtml(r.status)}</span><span class="mono">${r.hrs} hrs</span></div>`).join('')}
+    `;
+  }catch(e){
+    resultsEl.innerHTML = '<div style="color:var(--clay);font-size:12px;">Search failed.</div>';
+  }
+}
+
+document.getElementById('dateInput').value = currentDate;
+document.getElementById('f-assigneddatetime').value = currentDate;
+loadTeam();
+loadDay(currentDate);
+setInterval(()=>{
+  document.querySelectorAll('.live-total').forEach(el=>{
+    const task = state.tasks.find(t=>t.id===el.dataset.task);
+    if(task) el.textContent = roundNum(hoursDecimal(taskTotalMs(task, Date.now())),2)+' hrs';
+  });
+  if(!dragCtx) renderTimeline();
+}, 1000);
+</script>
+</body>
+</html>
